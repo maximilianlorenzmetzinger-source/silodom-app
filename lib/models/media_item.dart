@@ -2,34 +2,42 @@
 
 enum MediaType { image, video }
 
-class MediaItem {
-  final String id;
+class SlideItem {
   final MediaType type;
   final String url;
-  final String? caption;
-  final String? eventName;
-  final String? date;
-  final String? description;  // NEU
 
-  const MediaItem({
-    required this.id,
-    required this.type,
-    required this.url,
-    this.caption,
-    this.eventName,
-    this.date,
-    this.description,  // NEU
-  });
+  const SlideItem({required this.type, required this.url});
 
-  factory MediaItem.fromJson(Map<String, dynamic> json) {
-    return MediaItem(
-      id: json['id'] as String,
+  factory SlideItem.fromJson(Map<String, dynamic> json) {
+    return SlideItem(
       type: (json['type'] as String) == 'video' ? MediaType.video : MediaType.image,
       url: json['url'] as String,
-      caption: json['caption'] as String?,
+    );
+  }
+}
+
+class EventItem {
+  final String id;
+  final String? eventName;
+  final String? description;
+  final List<SlideItem> slides;
+
+  const EventItem({
+    required this.id,
+    required this.slides,
+    this.eventName,
+    this.description,
+  });
+
+  factory EventItem.fromJson(Map<String, dynamic> json) {
+    final slideList = (json['slides'] as List<dynamic>)
+        .map((s) => SlideItem.fromJson(s))
+        .toList();
+    return EventItem(
+      id: json['id'] as String,
       eventName: json['event_name'] as String?,
-      date: json['date'] as String?,
-      description: json['description'] as String?,  // NEU
+      description: json['description'] as String?,
+      slides: slideList,
     );
   }
 }

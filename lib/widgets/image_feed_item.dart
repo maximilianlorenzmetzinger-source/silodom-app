@@ -6,7 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 
 class ImageFeedItem extends StatelessWidget {
-  final MediaItem item;
+  final SlideItem item;
 
   const ImageFeedItem({super.key, required this.item});
 
@@ -15,25 +15,20 @@ class ImageFeedItem extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Hintergrund: gestreckt, geblurred, gedunkelt
+        // Hintergrund: geblurred, gedunkelt
         CachedNetworkImage(
           imageUrl: item.url,
           fit: BoxFit.cover,
           imageBuilder: (context, imageProvider) => Stack(
             fit: StackFit.expand,
             children: [
-              // Gestreckt + gedunkelt
               ColorFiltered(
                 colorFilter: ColorFilter.mode(
                   Colors.black.withOpacity(0.55),
                   BlendMode.darken,
                 ),
-                child: Image(
-                  image: imageProvider,
-                  fit: BoxFit.cover,
-                ),
+                child: Image(image: imageProvider, fit: BoxFit.cover),
               ),
-              // Blur drüber
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Container(color: Colors.transparent),
@@ -43,24 +38,17 @@ class ImageFeedItem extends StatelessWidget {
           placeholder: (context, url) => Container(color: Colors.black),
           errorWidget: (context, url, error) => Container(color: Colors.black),
         ),
-
-        // Vordergrund: Originalproportionen, volle Breite
+        // Vordergrund: Originalproportionen
         Center(
           child: CachedNetworkImage(
             imageUrl: item.url,
             fit: BoxFit.fitWidth,
             width: double.infinity,
             placeholder: (context, url) => const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white24,
-                strokeWidth: 1,
-              ),
+              child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 1),
             ),
-            errorWidget: (context, url, error) => const Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white24,
-              size: 48,
-            ),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.broken_image_outlined, color: Colors.white24, size: 48),
           ),
         ),
       ],

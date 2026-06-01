@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import '../models/media_item.dart';
 import '../services/media_service.dart';
 import '../widgets/image_feed_item.dart';
+import '../widgets/image_preloader.dart';
 import '../widgets/video_feed_item.dart';
 import '../widgets/video_preloader.dart';
-
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -17,57 +17,114 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  late PageController _pageController;
+  late PageController _verticalController;
   final VideoPreloader _preloader = VideoPreloader();
-  List<MediaItem> _items = [];
+  List<EventItem> _events = [];
   bool _loading = true;
-  int _currentIndex = 0;
+  int _currentEventIndex = 0;
+  int _currentSlideIndex = 0;
   double _dragOffset = 0.0;
   bool _detailOpen = false;
+
+  final Map<int, PageController> _slideControllers = {};
+
+  PageController _getSlideController(int eventIndex) {
+    if (!_slideControllers.containsKey(eventIndex)) {
+      _slideControllers[eventIndex] = PageController();
+    }
+    return _slideControllers[eventIndex]!;
+  }
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _verticalController = PageController();
     _loadFeed();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Preload Bilder sobald Context verfügbar
+    if (_events.isNotEmpty) {
+      _preloadImagesAround(0);
+    }
+  }
+
+  @override
   void dispose() {
-    _pageController.dispose();
+    _verticalController.dispose();
+    for (final c in _slideControllers.values) {
+      c.dispose();
+    }
     _preloader.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   Future<void> _loadFeed() async {
-    final items = await MediaService.fetchFeed();
+    final events = await MediaService.fetchFeed();
     if (mounted) {
       setState(() {
-        _items = items;
+        _events = events;
         _loading = false;
       });
       _preloadAround(0);
+      _preloadImagesAround(0);
     }
   }
 
-  /// Lädt das aktuelle + nächste Video vor
-  void _preloadAround(int index) {
-    for (int i = index; i <= index + 1; i++) {
-      if (i < _items.length && _items[i].type == MediaType.video) {
-        _preloader.preload(_items[i].url);
+  void _preloadAround(int eventIndex) {
+    for (int i = eventIndex; i <= eventIndex + 1; i++) {
+      if (i < _events.length) {
+        for (final slide in _events[i].slides) {
+          if (slide.type == MediaType.video) {
+            _preloader.preload(slide.url);
+          }
+        }
+      }
+    }
+  }
+
+  void _preloadImagesAround(int eventIndex) {
+    for (int i = eventIndex; i <= eventIndex + 1; i++) {
+      if (i < _events.length) {
+        final urls = _events[i]
+            .slides
+            .where((s) => s.type == MediaType.image)
+            .map((s) => s.url)
+            .toList();
+        ImagePreloader.preloadAll(urls, context);
       }
     }
   }
 
   void _openDetail() => setState(() => _detailOpen = true);
-
   void _closeDetail() => setState(() {
         _detailOpen = false;
         _dragOffset = 0.0;
       });
+
+  void _goToPrevSlide() {
+    if (_currentSlideIndex > 0) {
+      _getSlideController(_currentEventIndex).previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _goToNextSlide() {
+    final event = _events[_currentEventIndex];
+    if (_currentSlideIndex < event.slides.length - 1) {
+      _getSlideController(_currentEventIndex).nextPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +132,7 @@ class _FeedScreenState extends State<FeedScreen> {
       backgroundColor: Colors.black,
       body: _loading
           ? _buildLoadingScreen()
-          : _items.isEmpty
+          : _events.isEmpty
               ? _buildEmptyState()
               : _buildFeed(),
     );
@@ -99,10 +156,7 @@ class _FeedScreenState extends State<FeedScreen> {
           SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(
-              color: Colors.white30,
-              strokeWidth: 1,
-            ),
+            child: CircularProgressIndicator(color: Colors.white30, strokeWidth: 1),
           ),
         ],
       ),
@@ -111,10 +165,8 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildEmptyState() {
     return const Center(
-      child: Text(
-        'Keine Inhalte',
-        style: TextStyle(color: Colors.white38, letterSpacing: 3),
-      ),
+      child: Text('Keine Inhalte',
+          style: TextStyle(color: Colors.white38, letterSpacing: 3)),
     );
   }
 
@@ -127,18 +179,15 @@ class _FeedScreenState extends State<FeedScreen> {
                 : 0.0))
         .toDouble();
 
-    final currentItem = _items[_currentIndex];
+    final currentEvent = _events[_currentEventIndex];
+    final slideCount = currentEvent.slides.length;
 
     return GestureDetector(
       onHorizontalDragUpdate: (details) {
         if (_detailOpen) {
-          if (details.delta.dx > 0) {
-            setState(() => _dragOffset = details.delta.dx);
-          }
+          if (details.delta.dx > 0) setState(() => _dragOffset = details.delta.dx);
         } else {
-          if (details.delta.dx < 0) {
-            setState(() => _dragOffset += details.delta.dx);
-          }
+          if (details.delta.dx < 0) setState(() => _dragOffset += details.delta.dx);
         }
       },
       onHorizontalDragEnd: (details) {
@@ -149,8 +198,7 @@ class _FeedScreenState extends State<FeedScreen> {
             setState(() => _dragOffset = 0.0);
           }
         } else {
-          if (details.primaryVelocity! < -300 ||
-              -_dragOffset > screenWidth * 0.3) {
+          if (details.primaryVelocity! < -300 || -_dragOffset > screenWidth * 0.3) {
             _openDetail();
             _dragOffset = 0.0;
           } else {
@@ -160,24 +208,77 @@ class _FeedScreenState extends State<FeedScreen> {
       },
       child: Stack(
         children: [
+          // Vertikaler Feed
           PageView.builder(
-            controller: _pageController,
+            controller: _verticalController,
             scrollDirection: Axis.vertical,
             physics: _detailOpen
                 ? const NeverScrollableScrollPhysics()
                 : const PageScrollPhysics(),
             onPageChanged: (i) {
-              setState(() => _currentIndex = i);
+              setState(() {
+                _currentEventIndex = i;
+                _currentSlideIndex = 0;
+              });
               _preloadAround(i);
+              _preloadImagesAround(i);
             },
-            itemCount: _items.length,
-            itemBuilder: (context, index) {
-              final item = _items[index];
-              if (item.type == MediaType.video) {
-                return VideoFeedItem(item: item, preloader: _preloader);
-              } else {
-                return ImageFeedItem(item: item);
-              }
+            itemCount: _events.length,
+            itemBuilder: (context, eventIndex) {
+              final event = _events[eventIndex];
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Horizontale Slides
+                  PageView.builder(
+                    controller: _getSlideController(eventIndex),
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onPageChanged: (slideIndex) {
+                      if (eventIndex == _currentEventIndex) {
+                        setState(() => _currentSlideIndex = slideIndex);
+                      }
+                    },
+                    itemCount: event.slides.length,
+                    itemBuilder: (context, slideIndex) {
+                      final slide = event.slides[slideIndex];
+                      if (slide.type == MediaType.video) {
+                        return VideoFeedItem(
+                          item: slide,
+                          preloader: _preloader,
+                          visibilityKey: 'video-$eventIndex-$slideIndex',
+                        );
+                      } else {
+                        return ImageFeedItem(item: slide);
+                      }
+                    },
+                  ),
+
+                  // Tippen links → vorherige Slide
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 80,
+                    width: screenWidth * 0.3,
+                    child: GestureDetector(
+                      onTap: _goToPrevSlide,
+                      behavior: HitTestBehavior.translucent,
+                    ),
+                  ),
+
+                  // Tippen rechts → nächste Slide
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 80,
+                    width: screenWidth * 0.3,
+                    child: GestureDetector(
+                      onTap: _goToNextSlide,
+                      behavior: HitTestBehavior.translucent,
+                    ),
+                  ),
+                ],
+              );
             },
           ),
 
@@ -199,9 +300,9 @@ class _FeedScreenState extends State<FeedScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (currentItem.description != null)
+                      if (currentEvent.description != null)
                         Text(
-                          currentItem.description!,
+                          currentEvent.description!,
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -212,11 +313,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       else
                         const Text(
                           'Keine Beschreibung vorhanden.',
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 14,
-                            letterSpacing: 1,
-                          ),
+                          style: TextStyle(color: Colors.white38, fontSize: 14),
                         ),
                     ],
                   ),
@@ -224,7 +321,31 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
 
-          // Scroll-Indikator
+          // Slide-Punkte unten
+          if (!_detailOpen && slideCount > 1)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(slideCount, (i) {
+                  final isActive = i == _currentSlideIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: isActive ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.white : Colors.white38,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+
+          // Vertikaler Scroll-Indikator
           if (!_detailOpen)
             Positioned(
               right: 16,
@@ -233,8 +354,8 @@ class _FeedScreenState extends State<FeedScreen> {
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: List.generate(_items.length, (i) {
-                    final isActive = i == _currentIndex;
+                  children: List.generate(_events.length, (i) {
+                    final isActive = i == _currentEventIndex;
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       margin: const EdgeInsets.symmetric(vertical: 2),

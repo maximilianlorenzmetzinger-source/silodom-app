@@ -64,17 +64,25 @@ class _FeedScreenState extends State<FeedScreen> {
     super.dispose();
   }
 
-  Future<void> _loadFeed() async {
-    final events = await MediaService.fetchFeed();
-    if (mounted) {
-      setState(() {
-        _events = events;
-        _loading = false;
-      });
-      _preloadAround(0);
-      _preloadImagesAround(0);
-    }
+ Future<void> _loadFeed() async {
+  final events = await MediaService.fetchFeed();
+  if (mounted) {
+    setState(() {
+      _events = events;
+      _loading = false;
+    });
+    // Alle Bilder sofort vorladen
+    final allImageUrls = events
+        .expand((e) => e.slides)
+        .where((s) => s.type == MediaType.image)
+        .map((s) => s.url)
+        .toList();
+    ImagePreloader.preloadAll(allImageUrls, context);
+    
+    // Videos der ersten zwei Events vorladen
+    _preloadAround(0);
   }
+}
 
   void _preloadAround(int eventIndex) {
     for (int i = eventIndex; i <= eventIndex + 1; i++) {

@@ -4,9 +4,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class ImagePreloader {
-  /// Lädt ein Bild in den Cache ohne es anzuzeigen
   static Future<void> preload(String url, BuildContext context) async {
-    await precacheImage(CachedNetworkImageProvider(url), context);
+    final provider = CachedNetworkImageProvider(url);
+    await precacheImage(provider, context);
   }
 
   static void preloadAll(List<String> urls, BuildContext context) {

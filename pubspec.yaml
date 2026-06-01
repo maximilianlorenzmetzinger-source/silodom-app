@@ -1,0 +1,34 @@
+name: silodom
+description: Silodom Club App - Event Feed
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Video playback
+  video_player: ^2.8.3
+  
+  # Network images with caching
+  cached_network_image: ^3.3.1
+  
+  # HTTP requests (für JSON laden)
+  http: ^1.2.0
+  
+  # Visibility detection für auto-play
+  visibility_detector: ^0.4.0+2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/

@@ -1,12 +1,10 @@
 // lib/main.dart
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'screens/feed_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Cache auf 500MB erhöhen
   PaintingBinding.instance.imageCache.maximumSizeBytes = 500 * 1024 * 1024;
   runApp(const SilodomApp());
 }
@@ -27,7 +25,7 @@ class SilodomApp extends StatelessWidget {
           primary: Colors.white,
         ),
       ),
-      home: const FeedScreen(),
+      home: const SplashScreen(),
     );
   }
 }

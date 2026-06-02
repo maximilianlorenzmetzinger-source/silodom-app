@@ -7,10 +7,11 @@ import '../services/media_service.dart';
 import '../widgets/image_feed_item.dart';
 import '../widgets/image_preloader.dart';
 import '../widgets/video_feed_item.dart';
-import '../widgets/video_preloader.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  final List<EventItem>? preloadedEvents;
+
+  const FeedScreen({super.key, this.preloadedEvents});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -18,7 +19,6 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   late PageController _verticalController;
-  final VideoPreloader _preloader = VideoPreloader();
   List<EventItem> _events = [];
   bool _loading = true;
   int _currentEventIndex = 0;
@@ -47,7 +47,6 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Preload Bilder sobald Context verfügbar
     if (_events.isNotEmpty) {
       _preloadImagesAround(0);
     }
@@ -59,40 +58,23 @@ class _FeedScreenState extends State<FeedScreen> {
     for (final c in _slideControllers.values) {
       c.dispose();
     }
-    _preloader.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
- Future<void> _loadFeed() async {
-  final events = await MediaService.fetchFeed();
-  if (mounted) {
-    setState(() {
-      _events = events;
-      _loading = false;
-    });
-    // Alle Bilder sofort vorladen
-    final allImageUrls = events
-        .expand((e) => e.slides)
-        .where((s) => s.type == MediaType.image)
-        .map((s) => s.url)
-        .toList();
-    ImagePreloader.preloadAll(allImageUrls, context);
-    
-    // Videos der ersten zwei Events vorladen
-    _preloadAround(0);
-  }
-}
-
-  void _preloadAround(int eventIndex) {
-    for (int i = eventIndex; i <= eventIndex + 1; i++) {
-      if (i < _events.length) {
-        for (final slide in _events[i].slides) {
-          if (slide.type == MediaType.video) {
-            _preloader.preload(slide.url);
-          }
-        }
-      }
+  Future<void> _loadFeed() async {
+    final events = widget.preloadedEvents ?? await MediaService.fetchFeed();
+    if (mounted) {
+      setState(() {
+        _events = events;
+        _loading = false;
+      });
+      final allImageUrls = events
+          .expand((e) => e.slides)
+          .where((s) => s.type == MediaType.image)
+          .map((s) => s.url)
+          .toList();
+      ImagePreloader.preloadAll(allImageUrls, context);
     }
   }
 
@@ -228,7 +210,6 @@ class _FeedScreenState extends State<FeedScreen> {
                 _currentEventIndex = i;
                 _currentSlideIndex = 0;
               });
-              _preloadAround(i);
               _preloadImagesAround(i);
             },
             itemCount: _events.length,
@@ -237,7 +218,6 @@ class _FeedScreenState extends State<FeedScreen> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Horizontale Slides
                   PageView.builder(
                     controller: _getSlideController(eventIndex),
                     scrollDirection: Axis.horizontal,
@@ -253,7 +233,6 @@ class _FeedScreenState extends State<FeedScreen> {
                       if (slide.type == MediaType.video) {
                         return VideoFeedItem(
                           item: slide,
-                          preloader: _preloader,
                           visibilityKey: 'video-$eventIndex-$slideIndex',
                         );
                       } else {
@@ -261,8 +240,6 @@ class _FeedScreenState extends State<FeedScreen> {
                       }
                     },
                   ),
-
-                  // Tippen links → vorherige Slide
                   Positioned(
                     left: 0,
                     top: 0,
@@ -273,8 +250,6 @@ class _FeedScreenState extends State<FeedScreen> {
                       behavior: HitTestBehavior.translucent,
                     ),
                   ),
-
-                  // Tippen rechts → nächste Slide
                   Positioned(
                     right: 0,
                     top: 0,

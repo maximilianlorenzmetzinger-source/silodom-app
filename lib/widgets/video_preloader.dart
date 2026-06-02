@@ -7,6 +7,13 @@ class VideoPreloader extends ChangeNotifier {
   final Map<String, VideoPlayerController> _controllers = {};
   final Map<String, bool> _initialized = {};
 
+  /// Bereits initialisierten Controller von außen eintragen
+  void injectController(String url, VideoPlayerController controller) {
+    _controllers[url] = controller;
+    _initialized[url] = true;
+    notifyListeners();
+  }
+
   Future<VideoPlayerController> getController(String url) async {
     if (_controllers.containsKey(url)) {
       return _controllers[url]!;

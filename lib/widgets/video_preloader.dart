@@ -1,55 +1,38 @@
 // lib/widgets/video_preloader.dart
 
-import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-class VideoPreloader extends ChangeNotifier {
+class VideoPreloader {
   final Map<String, VideoPlayerController> _controllers = {};
-  final Map<String, bool> _initialized = {};
 
-  /// Bereits initialisierten Controller von außen eintragen
-  void injectController(String url, VideoPlayerController controller) {
+  void inject(String url, VideoPlayerController controller) {
     _controllers[url] = controller;
-    _initialized[url] = true;
-    notifyListeners();
   }
 
-  Future<VideoPlayerController> getController(String url) async {
-    if (_controllers.containsKey(url)) {
-      return _controllers[url]!;
-    }
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(url),
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    );
+  Future<VideoPlayerController?> preload(String url) async {
+    if (_controllers.containsKey(url)) return _controllers[url];
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
     _controllers[url] = controller;
-    _initialized[url] = false;
+
     await controller.initialize();
     controller.setLooping(true);
-    _initialized[url] = true;
-    notifyListeners();
+    controller.setVolume(0.0);
+    await controller.seekTo(Duration.zero);
+
     return controller;
   }
 
-  bool isInitialized(String url) => _initialized[url] ?? false;
-
-  void preload(String url) {
-    if (!_controllers.containsKey(url)) {
-      getController(url);
-    }
+  VideoPlayerController? getIfReady(String url) {
+    final c = _controllers[url];
+    if (c != null && c.value.isInitialized) return c;
+    return null;
   }
 
-  void disposeUrl(String url) {
-    _controllers[url]?.dispose();
-    _controllers.remove(url);
-    _initialized.remove(url);
-  }
-
-  @override
   void dispose() {
     for (final c in _controllers.values) {
       c.dispose();
     }
-    super.dispose();
+    _controllers.clear();
   }
 }

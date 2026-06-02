@@ -23,27 +23,27 @@ class MediaService {
 
   static List<EventItem> _demoFeed() {
     return [
-      EventItem(
+      const EventItem(
         id: '1',
         eventName: 'SILODOM',
         description: 'Eine unvergessliche Nacht mit den besten Artists der Szene.',
         slides: [
-          const SlideItem(
+          SlideItem(
             type: MediaType.image,
             url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1080',
           ),
-          const SlideItem(
+          SlideItem(
             type: MediaType.image,
             url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1080',
           ),
         ],
       ),
-      EventItem(
+      const EventItem(
         id: '2',
         eventName: 'DARK MATTER',
         description: 'Aftermovie vom letzten Abend.',
         slides: [
-          const SlideItem(
+          SlideItem(
             type: MediaType.video,
             url: 'https://www.w3schools.com/html/mov_bbb.mp4',
           ),

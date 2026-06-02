@@ -7,6 +7,7 @@ import '../services/media_service.dart';
 import '../widgets/image_feed_item.dart';
 import '../widgets/image_preloader.dart';
 import '../widgets/video_feed_item.dart';
+import '../widgets/video_preloader.dart';
 
 class FeedScreen extends StatefulWidget {
   final List<EventItem>? preloadedEvents;
@@ -19,11 +20,11 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   late PageController _verticalController;
+  final VideoPreloader _videoPreloader = VideoPreloader();
   List<EventItem> _events = [];
   bool _loading = true;
   int _currentEventIndex = 0;
   int _currentSlideIndex = 0;
-  double _dragOffset = 0.0;
   bool _detailOpen = false;
 
   final Map<int, PageController> _slideControllers = {};
@@ -58,6 +59,7 @@ class _FeedScreenState extends State<FeedScreen> {
     for (final c in _slideControllers.values) {
       c.dispose();
     }
+    _videoPreloader.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -75,6 +77,7 @@ class _FeedScreenState extends State<FeedScreen> {
           .map((s) => s.url)
           .toList();
       ImagePreloader.preloadAll(allImageUrls, context);
+      _preloadVideosAround(0);
     }
   }
 
@@ -91,30 +94,20 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
+  void _preloadVideosAround(int eventIndex) {
+    for (int i = eventIndex; i <= eventIndex + 1; i++) {
+      if (i < _events.length) {
+        for (final slide in _events[i].slides) {
+          if (slide.type == MediaType.video) {
+            _videoPreloader.preload(slide.url);
+          }
+        }
+      }
+    }
+  }
+
   void _openDetail() => setState(() => _detailOpen = true);
-  void _closeDetail() => setState(() {
-        _detailOpen = false;
-        _dragOffset = 0.0;
-      });
-
-  void _goToPrevSlide() {
-    if (_currentSlideIndex > 0) {
-      _getSlideController(_currentEventIndex).previousPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _goToNextSlide() {
-    final event = _events[_currentEventIndex];
-    if (_currentSlideIndex < event.slides.length - 1) {
-      _getSlideController(_currentEventIndex).nextPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
+  void _closeDetail() => setState(() => _detailOpen = false);
 
   @override
   Widget build(BuildContext context) {
@@ -162,37 +155,16 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildFeed() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final dragProgress = (_detailOpen
-            ? 1.0
-            : (_dragOffset < 0
-                ? (-_dragOffset / screenWidth).clamp(0.0, 1.0)
-                : 0.0))
-        .toDouble();
-
     final currentEvent = _events[_currentEventIndex];
     final slideCount = currentEvent.slides.length;
 
     return GestureDetector(
-      onHorizontalDragUpdate: (details) {
+      onTapUp: (details) {
         if (_detailOpen) {
-          if (details.delta.dx > 0) setState(() => _dragOffset = details.delta.dx);
+          _closeDetail();
         } else {
-          if (details.delta.dx < 0) setState(() => _dragOffset += details.delta.dx);
-        }
-      },
-      onHorizontalDragEnd: (details) {
-        if (_detailOpen) {
-          if (details.primaryVelocity! > 300) {
-            _closeDetail();
-          } else {
-            setState(() => _dragOffset = 0.0);
-          }
-        } else {
-          if (details.primaryVelocity! < -300 || -_dragOffset > screenWidth * 0.3) {
+          if (details.localPosition.dx > screenWidth * 0.7) {
             _openDetail();
-            _dragOffset = 0.0;
-          } else {
-            setState(() => _dragOffset = 0.0);
           }
         }
       },
@@ -211,71 +183,53 @@ class _FeedScreenState extends State<FeedScreen> {
                 _currentSlideIndex = 0;
               });
               _preloadImagesAround(i);
+              _preloadVideosAround(i);
             },
             itemCount: _events.length,
             itemBuilder: (context, eventIndex) {
               final event = _events[eventIndex];
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  PageView.builder(
-                    controller: _getSlideController(eventIndex),
-                    scrollDirection: Axis.horizontal,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (slideIndex) {
-                      if (eventIndex == _currentEventIndex) {
-                        setState(() => _currentSlideIndex = slideIndex);
-                      }
-                    },
-                    itemCount: event.slides.length,
-                    itemBuilder: (context, slideIndex) {
-                      final slide = event.slides[slideIndex];
-                      if (slide.type == MediaType.video) {
-                        return VideoFeedItem(
-                          item: slide,
-                          visibilityKey: 'video-$eventIndex-$slideIndex',
-                        );
-                      } else {
-                        return ImageFeedItem(item: slide);
-                      }
-                    },
-                  ),
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 80,
-                    width: screenWidth * 0.3,
-                    child: GestureDetector(
-                      onTap: _goToPrevSlide,
-                      behavior: HitTestBehavior.translucent,
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 80,
-                    width: screenWidth * 0.3,
-                    child: GestureDetector(
-                      onTap: _goToNextSlide,
-                      behavior: HitTestBehavior.translucent,
-                    ),
-                  ),
-                ],
+              return PageView.builder(
+                controller: _getSlideController(eventIndex),
+                scrollDirection: Axis.horizontal,
+                physics: _detailOpen
+                    ? const NeverScrollableScrollPhysics()
+                    : const PageScrollPhysics(),
+                onPageChanged: (slideIndex) {
+                  if (eventIndex == _currentEventIndex) {
+                    setState(() => _currentSlideIndex = slideIndex);
+                  }
+                },
+                itemCount: event.slides.length,
+                itemBuilder: (context, slideIndex) {
+                  final slide = event.slides[slideIndex];
+                  if (slide.type == MediaType.video) {
+                    return VideoFeedItem(
+                      item: slide,
+                      visibilityKey: 'video-$eventIndex-$slideIndex',
+                      preloader: _videoPreloader,
+                      isFirst: eventIndex == 0 && slideIndex == 0,
+                    );
+                  } else {
+                    return ImageFeedItem(item: slide);
+                  }
+                },
               );
             },
           ),
 
           // Schwarze Ebene
-          if (dragProgress > 0)
-            Opacity(
-              opacity: (dragProgress * 0.7).clamp(0.0, 0.7),
+          if (_detailOpen)
+            AnimatedOpacity(
+              opacity: 0.7,
+              duration: const Duration(milliseconds: 300),
               child: Container(color: Colors.black),
             ),
 
           // Beschreibungstext
-          if (dragProgress > 0.5)
-            Opacity(
-              opacity: ((dragProgress - 0.5) * 2).clamp(0.0, 1.0),
+          if (_detailOpen)
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: const Duration(milliseconds: 300),
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(28, 60, 28, 48),

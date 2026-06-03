@@ -1,7 +1,9 @@
+// lib/screens/splash_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/media_service.dart';
-import 'feed_screen.dart';
+import 'main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,6 +20,7 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -34,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => FeedScreen(preloadedEvents: events),
+        pageBuilder: (_, __, ___) => MainScreen(preloadedEvents: events),
         transitionDuration: Duration.zero,
       ),
     );

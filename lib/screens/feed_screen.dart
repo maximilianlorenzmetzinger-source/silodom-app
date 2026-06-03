@@ -1,7 +1,6 @@
 // lib/screens/feed_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/media_item.dart';
 import '../services/media_service.dart';
 import '../widgets/image_feed_item.dart';
@@ -41,8 +40,6 @@ class _FeedScreenState extends State<FeedScreen> {
     super.initState();
     _verticalController = PageController();
     _loadFeed();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
@@ -60,7 +57,6 @@ class _FeedScreenState extends State<FeedScreen> {
       c.dispose();
     }
     _videoPreloader.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -170,7 +166,6 @@ class _FeedScreenState extends State<FeedScreen> {
       },
       child: Stack(
         children: [
-          // Vertikaler Feed
           PageView.builder(
             controller: _verticalController,
             scrollDirection: Axis.vertical,

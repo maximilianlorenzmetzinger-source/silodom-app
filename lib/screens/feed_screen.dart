@@ -10,8 +10,13 @@ import '../widgets/video_preloader.dart';
 
 class FeedScreen extends StatefulWidget {
   final List<EventItem>? preloadedEvents;
+  final VoidCallback? onMenuOpen;
 
-  const FeedScreen({super.key, this.preloadedEvents});
+  const FeedScreen({
+    super.key,
+    this.preloadedEvents,
+    this.onMenuOpen,
+  });
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -166,6 +171,7 @@ class _FeedScreenState extends State<FeedScreen> {
       },
       child: Stack(
         children: [
+          // Vertikaler Feed
           PageView.builder(
             controller: _verticalController,
             scrollDirection: Axis.vertical,
@@ -211,6 +217,7 @@ class _FeedScreenState extends State<FeedScreen> {
               );
             },
           ),
+
 
           // Schwarze Ebene
           if (_detailOpen)

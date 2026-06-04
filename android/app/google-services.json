@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "218005664029",
+    "project_id": "silodom-app",
+    "storage_bucket": "silodom-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218005664029:android:d10e72e57e2911a7e731f4",
+        "android_client_info": {
+          "package_name": "com.example.silodom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmE-nRMrQkcdCiwx_XD2PI2wjWWb1q85A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

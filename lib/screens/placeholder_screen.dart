@@ -67,7 +67,7 @@ class LovePeaceScreen extends StatelessWidget {
               _buildDivider(),
 
               _buildText(
-                '✌️ Peace, Love & Osthafen.\n🕊 Freiheit & Frieden für alle Völker.\n🎵 Ein Floor. Eine Community. Ein Vibe.',
+                '✌️ Peace, Love & Osthafen.\n🕊 Freiheit & Frieden für alle Völker.',
               ),
 
               const SizedBox(height: 24),

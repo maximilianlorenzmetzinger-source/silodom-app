@@ -46,7 +46,10 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildCurrentPage() {
     switch (_currentPage) {
       case MenuPage.home:
-        return FeedScreen(preloadedEvents: widget.preloadedEvents);
+        return FeedScreen(
+          preloadedEvents: widget.preloadedEvents,
+          onMenuOpen: _openMenu,
+        );
       case MenuPage.lovePeace:
         return const PlaceholderScreen(title: 'Love & Peace');
       case MenuPage.calendar:
@@ -60,25 +63,35 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onHorizontalDragEnd: (details) {
-          if (!_menuOpen &&
-              details.primaryVelocity != null &&
-              details.primaryVelocity! > 300) {
-            _openMenu();
-          }
-        },
-        child: Stack(
-          children: [
-            _buildCurrentPage(),
-            if (_menuOpen)
-              MenuOverlay(
-                currentPage: _currentPage,
-                onPageSelected: _selectPage,
-                onClose: _closeMenu,
+      body: Stack(
+        children: [
+          // Schmaler Swipe-Bereich links – funktioniert auf allen Seiten
+          _buildCurrentPage(),
+
+          if (!_menuOpen)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 24,
+              child: GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  if (details.primaryVelocity != null &&
+                      details.primaryVelocity! > 200) {
+                    _openMenu();
+                  }
+                },
+                behavior: HitTestBehavior.translucent,
               ),
-          ],
-        ),
+            ),
+
+          if (_menuOpen)
+            MenuOverlay(
+              currentPage: _currentPage,
+              onPageSelected: _selectPage,
+              onClose: _closeMenu,
+            ),
+        ],
       ),
     );
   }
